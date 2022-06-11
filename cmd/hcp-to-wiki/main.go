@@ -6,13 +6,14 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 )
 
 // These constants represent the offset of the items in each advert read from the CSV file
 const ( // iota is reset to 0
-	adv_magazine = 0 // transaction ID
+	adv_magazine = 0 //
 	adv_yyyy_mm  = 1 //
 	adv_page_num = 2 //
 	adv_system   = 3 //
@@ -22,10 +23,10 @@ const ( // iota is reset to 0
 	adv_board    = 7 //
 )
 
-const max_price = 100_000
-const max_page_num = 500
-const min_year = 1945
-const max_year = 2099
+const max_price = 100_000 // Maximum price allowed: anything higher than this is likely to be an error in the data
+const max_page_num = 500  // Maximum magazine page number: anything higher than this is likely to be an error in the data
+const min_year = 1945     // Earliest acceptable year
+const max_year = 2099     // Latest acceptable year
 
 type advertInfo struct {
 	row      int
@@ -39,7 +40,12 @@ type advertInfo struct {
 	board    string // TODO: True if the system was a system board
 }
 
-// TODO
+// Takes a CSV file representing home computer prices taken from adverts and
+// processes that data to produce output in a format suitable for inclusion in a wiki.
+//
+// The data is grouped by quarter in half decades in each table.
+// Systems are listd alphabetically; only systems with at least one valid data point in that table are included.
+
 func main() {
 
 	flag.Parse()
@@ -53,14 +59,29 @@ func main() {
 
 	data := readCSV(entryFilename)
 
-	adverts := parseData(data)
+	// Massage the original CSV data into an array of advertInfo data
+	adverts, minDate, maxDate := parseData(data)
 
-	// data_by_date := make(map[int], 0)
-	fmt.Printf("entries: %v\n", adverts[0:10])
+	// Build a collection of prices for each system
+	systems := buildBySystem(adverts, minDate, maxDate)
 
+	// Build array of keys (system names) in alphabetical order
+	keys := make([]string, 0, len(systems))
+	for key, _ := range systems {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	for _, key := range keys {
+		fmt.Printf("%-40.40s: %v\n", key, systems[key])
+	}
+
+	// Output the final wiki format data
+	outputWikidata(systems, keys, minDate, maxDate)
 }
 
-// TODO
+// Read data from a CSV file
+// Each row of data is represented as an array
 func readCSV(filename string) [][]string {
 	f, err := os.Open(filename)
 	if err != nil {
@@ -78,11 +99,19 @@ func readCSV(filename string) [][]string {
 	return transactions
 }
 
-//TODO
-func parseData(data [][]string) []advertInfo {
-	searching_for_header := true
-	adverts := make([]advertInfo, 0)
+// Parse the CSV data.
+// Skip everything until the header line (with "Source" in the first column) is seen.
+// Ignore empty lines.
+// Perform some integrity checks on the data.
+// Build up an array of advertInfo containing the data that passes validation.
+//
+// Return the data and also the minimum and maximum date-indices seen when processing the data.
+func parseData(data [][]string) (adverts []advertInfo, minDate int, maxDate int) {
+	minDate = (max_year + 1) * 4
+	maxDate = -1
+	adverts = make([]advertInfo, 0)
 
+	searching_for_header := true
 	for i, row := range data {
 		csvRowIndex := i + 1
 		valid := true
@@ -129,11 +158,70 @@ func parseData(data [][]string) []advertInfo {
 			continue
 		}
 
-		entry := advertInfo{csvRowIndex, row[adv_magazine], year, month, page, row[adv_system], price, row[adv_kit], row[adv_board]}
-		adverts = append(adverts, entry)
+		advert := advertInfo{csvRowIndex, row[adv_magazine], year, month, page, row[adv_system], price, row[adv_kit], row[adv_board]}
+		adverts = append(adverts, advert)
+		dateIndex := buildIndexFromAdvertInfo(advert)
+		if dateIndex < minDate {
+			minDate = dateIndex
+		}
+		if dateIndex > maxDate {
+			maxDate = dateIndex
+		}
 	}
 
-	return adverts
+	return adverts, minDate, maxDate
+}
+
+// Given advert data for a range of systems, outputs that data in a form suitable for including in a wiki page
+func outputWikidata(systems map[string][]int, keys []string, minDate int, maxDate int) {
+	// Loop through quarters in groups of five years.
+	// Take the lowest year and make the starting point either YYY0 or YYY5
+	// Process data for that group
+	// Move on five years and repeat until the start point exceeds the maxDate
+	minYear, _ := decodeIndexByQuarter(minDate)
+	maxYear, _ := decodeIndexByQuarter(maxDate)
+	startYear := (minYear / 5) * 5
+	const groupYearsBy = 5
+	fmt.Printf("Start Year: %d\n", startYear)
+	for groupYear := startYear; groupYear <= maxYear; groupYear = groupYear + groupYearsBy {
+		fmt.Printf("== %d - %d ==\n\n", groupYear, groupYear+groupYearsBy-1)
+		fmt.Printf("{| class=\"wikitable\"\n")
+		fmt.Printf("|-\n")
+		fmt.Printf("!  || colspan=\"4\" | %d || colspan=\"4\" | %d || colspan=\"4\" | %d || colspan=\"4\" | %d || colspan=\"4\" | %d\n", groupYear, groupYear+1, groupYear+2, groupYear+3, groupYear+4)
+		fmt.Printf("|-\n")
+		fmt.Println(" ! style=\"width: 10%;\" | System ")
+		fmt.Printf(" ! JAN-MAR || APR-JUN || JUL-SEP || OCT-DEC || JAN-MAR || APR-JUN || JUL-SEP || OCT-DEC || JAN-MAR || APR-JUN || JUL-SEP || OCT-DEC || JAN-MAR || APR-JUN || JUL-SEP || OCT-DEC || JAN-MAR || APR-JUN || JUL-SEP || OCT-DEC\n")
+		for _, key := range keys {
+			// Pick up the prices for this system:
+			prices := systems[key]
+			// Ignore this system if it has no price data in the relevant time period
+			if !systemHasPriceData(groupYear, groupYear+groupYearsBy-1, minDate, maxDate, prices) {
+				continue
+			}
+
+			fmt.Printf("|-\n| %s", key)
+			for currentYear := groupYear; currentYear < groupYear+groupYearsBy; currentYear++ {
+				for currentQuarter := 1; currentQuarter <= 4; currentQuarter++ {
+					currentIndex := buildIndexFromYearAndQuarter(currentYear, currentQuarter)
+					// fmt.Printf("Processing date %dQ%d  index=%d\n", currentYear, currentQuarter, currentIndex)
+					// for this index, find data and display
+					if currentQuarter == 1 {
+						fmt.Printf("\n     | ")
+					} else {
+						fmt.Printf("|| ")
+					}
+					if (currentIndex < minDate) || (currentIndex > maxDate) || (prices[currentIndex-minDate] <= 0) {
+						fmt.Printf("style=\"text-align: center;\" | &mdash; ")
+					} else {
+						fmt.Printf("style=\"text-align: right;\"  | £%-4d   ", prices[currentIndex-minDate])
+					}
+				}
+			}
+			fmt.Println("")
+		}
+		fmt.Printf("}\n\n") // Close the "wikitable"
+	}
+
 }
 
 // Process a date of the form "YYYY-MM".
@@ -141,7 +229,7 @@ func parseData(data [][]string) []advertInfo {
 //  o the string does not conform to the pattern NNNN-NN, where N is a numeral
 //  o the year is not (inclusively) between min_year and max_year constants
 //  o the month is not from 1 to 12
-// Otherwose return the year and month as integers.
+// Otherwise return the year and month as integers.
 //
 // TODO: make the upper limit for YYYY the current year
 func handle_yyyy_mm(yyyy_mm string) (year int, month int, err error) {
@@ -229,4 +317,115 @@ func handle_price(price_text string) (price int, err error) {
 		}
 	}
 	return price, local_err
+}
+
+// Process the advertInfo array to produce
+// Take current entry
+// is there a map for that "index"?
+// If not, create and populate
+// If there is, find this system and replace only iff new price is lower
+// byDate map is index=>systemsMap  map[int]
+// systemsMap is system=>advtertInfo map[string]advertInfo
+func buildByDate(adverts []advertInfo) map[int]map[string]advertInfo {
+	byDate := make(map[int]map[string]advertInfo)
+	for _, advert := range adverts {
+		// fmt.Printf("Processing row %d: %v\n", advert.row, advert)
+		index := buildIndexFromAdvertInfo(advert)
+		fmt.Printf("Built index %d for %v\n", index, advert)
+		if systemMap, ok := byDate[index]; ok {
+			if storedAdvert, ok := systemMap[advert.system]; ok {
+				// fmt.Printf("systemMap entry exists: %v\n", systemMap[advert.system])
+				stored_price := storedAdvert.price
+				if (advert.price > 0) && (advert.price < stored_price) {
+					fmt.Printf("%d/%d %s found as cheaper (%d against %d); row %d replaces row %d\n", advert.year, advert.month, advert.system, advert.price, stored_price, advert.row, storedAdvert.row)
+					systemMap[advert.system] = advert
+				} else {
+					fmt.Printf("%d/%d %s found as pricier (%d against %d); row %d LEAVES   row %d\n", advert.year, advert.month, advert.system, advert.price, stored_price, advert.row, storedAdvert.row)
+				}
+			} else {
+				// fmt.Printf("systemMap entry missing\n")
+				systemMap[advert.system] = advert
+			}
+		} else {
+			byDate[index] = make(map[string]advertInfo, 0)
+			systemMap = byDate[index]
+			systemMap[advert.system] = advert
+			fmt.Printf("%d/%d %s found for first time at %d; row %d\n", advert.year, advert.month, advert.system, advert.price, advert.row)
+		}
+	}
+	return byDate
+}
+
+// Given an advertInfo, this function produces an int that represents that year and quarter.
+// Months 1-3 are 0 (Q1), months 4-6 are 1 (Q2) etc.
+// The final index is (year*12 + quarter)
+func buildIndexFromAdvertInfo(advert advertInfo) int {
+	quarter := ((advert.month - 1) / 3)
+	return (advert.year * 4) + quarter
+}
+
+// Given a year and a quarter, combine them into a date-index integer
+func buildIndexFromYearAndQuarter(year int, quarter int) int {
+	return (year * 4) + (quarter - 1)
+}
+
+// Given a date-index, return the year and quarter which it represents
+func decodeIndexByQuarter(index int) (year int, quarter int) {
+	year = index / 4
+	quarter = index - (year * 4) + 1
+	return year, quarter
+}
+
+// Given a number of advertInfo objects, build a map of system => price-array
+// The price array index should be 0 for minDate and increase up to (maxDate-minDate) for maxDate
+func buildBySystem(adverts []advertInfo, minDate int, maxDate int) map[string][]int {
+	result := make(map[string][]int, 0)
+
+	for _, advert := range adverts {
+		if _, ok := result[advert.system]; !ok {
+			// This system has been seen for the first time.
+			// Create its price array
+			result[advert.system] = make([]int, maxDate-minDate+1)
+		}
+		// By this point the price array must exist, so update if appropriate.
+		index := buildIndexFromAdvertInfo(advert)
+		storedPrice := result[advert.system][index-minDate]
+		if (advert.price < storedPrice) || (storedPrice <= 0) {
+			result[advert.system][index-minDate] = advert.price
+		}
+	}
+	return result
+}
+
+// A helper function that determines whether there is price data available for the specified period
+func systemHasPriceData(startYear int, endYear int, minDate int, maxDate int, prices []int) bool {
+	systemHasPriceData := false
+
+	lowestIndex := buildIndexFromYearAndQuarter(startYear, 1)
+	lowestValidIndex := max(lowestIndex, minDate)
+	highestIndex := buildIndexFromYearAndQuarter(endYear, 1)
+	highestValidIndex := min(highestIndex, maxDate)
+
+	for idx := lowestValidIndex; idx <= highestValidIndex; idx++ {
+		if prices[idx-minDate] > 0 {
+			systemHasPriceData = true
+			break
+		}
+	}
+	return systemHasPriceData
+}
+
+// golang doesn't have min/max so provide them here
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
