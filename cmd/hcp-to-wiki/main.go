@@ -126,8 +126,11 @@ func parseData(data [][]string) (adverts []advertInfo, minDate int, maxDate int)
 			continue
 		}
 
+		// Make sure the system name has no leading or trailing spaces
+		system := strings.TrimSpace(row[adv_system])
+
 		// Entirely empty lines must be ignored. As an approximation, ignore any line without a system title, as that cannot contain meaningful data.
-		if len(row[adv_system]) == 0 {
+		if len(system) == 0 {
 			continue
 		}
 
@@ -160,7 +163,7 @@ func parseData(data [][]string) (adverts []advertInfo, minDate int, maxDate int)
 			continue
 		}
 
-		advert := advertInfo{csvRowIndex, row[adv_magazine], year, month, page, row[adv_system], price, row[adv_kit], row[adv_board]}
+		advert := advertInfo{csvRowIndex, row[adv_magazine], year, month, page, system, price, row[adv_kit], row[adv_board]}
 		adverts = append(adverts, advert)
 		dateIndex := buildIndexFromAdvertInfo(advert)
 		if dateIndex < minDate {
