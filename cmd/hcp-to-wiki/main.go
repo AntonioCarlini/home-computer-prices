@@ -221,9 +221,8 @@ func outputWikidata(systems map[string][]int, keys []string, minDate int, maxDat
 			}
 			fmt.Println("")
 		}
-		fmt.Printf("}\n\n") // Close the "wikitable"
+		fmt.Printf("|}\n\n") // Close the "wikitable"
 	}
-
 }
 
 // Process a date of the form "YYYY-MM".
