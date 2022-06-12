@@ -184,7 +184,6 @@ func outputWikidata(systems map[string][]int, keys []string, minDate int, maxDat
 	maxYear, _ := decodeIndexByQuarter(maxDate)
 	startYear := (minYear / 5) * 5
 	const groupYearsBy = 5
-	fmt.Printf("Start Year: %d\n", startYear)
 	for groupYear := startYear; groupYear <= maxYear; groupYear = groupYear + groupYearsBy {
 		fmt.Printf("== %d - %d ==\n\n", groupYear, groupYear+groupYearsBy-1)
 		fmt.Printf("{| class=\"wikitable\"\n")
@@ -364,10 +363,12 @@ func buildByDate(adverts []advertInfo) map[int]map[string]advertInfo {
 // o Data for "Apple II" is suppressed, as the configuration is unclear
 // o Data for "Exidy Sorcerer" is suppressed as the configuration is unclear
 func preprocessSystemData(systems map[string][]int) map[string][]int {
+	systemsToSuppress := []string{"Apple II", "Commodore PET", "Exidy Sorcerer", "Tandy TRS-80 Model 1"}
 	result := make(map[string][]int, 0)
 	for name, _ := range systems {
-		if (name == "Apple II") || (name == "Exidy Sorcerer") {
+		if sliceContainsString(systemsToSuppress, name) {
 			// Drop this data
+			fmt.Printf("Dropping %s\n", name)
 		} else if name == "Science of Cambridge MK14" {
 			result["MK14"] = systems[name]
 		} else {
@@ -424,7 +425,7 @@ func systemHasPriceData(startYear int, endYear int, minDate int, maxDate int, pr
 
 	lowestIndex := buildIndexFromYearAndQuarter(startYear, 1)
 	lowestValidIndex := max(lowestIndex, minDate)
-	highestIndex := buildIndexFromYearAndQuarter(endYear, 1)
+	highestIndex := buildIndexFromYearAndQuarter(endYear, 4)
 	highestValidIndex := min(highestIndex, maxDate)
 
 	for idx := lowestValidIndex; idx <= highestValidIndex; idx++ {
@@ -449,4 +450,13 @@ func max(a, b int) int {
 		return a
 	}
 	return b
+}
+
+func sliceContainsString(slice []string, candidate string) bool {
+	for _, member := range slice {
+		if member == candidate {
+			return true
+		}
+	}
+	return false
 }
