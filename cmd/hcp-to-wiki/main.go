@@ -65,6 +65,8 @@ func main() {
 	// Build a collection of prices for each system
 	systems := buildBySystem(adverts, minDate, maxDate)
 
+	systems = preprocessSystemData(systems)
+
 	// Build array of keys (system names) in alphabetical order
 	keys := make([]string, 0, len(systems))
 	for key, _ := range systems {
@@ -354,6 +356,26 @@ func buildByDate(adverts []advertInfo) map[int]map[string]advertInfo {
 		}
 	}
 	return byDate
+}
+
+// This function applies some pre-processing to the gathered data.
+// For now this is hard-coded, but may later be driven by an external configuration file.
+// The following changes are made:
+// o "Science of Cambridge MK14" is re-written as "MK14"
+// o Data for "Apple II" is suppressed, as the configuration is unclear
+// o Data for "Exidy Sorcerer" is suppressed as the configuration is unclear
+func preprocessSystemData(systems map[string][]int) map[string][]int {
+	result := make(map[string][]int, 0)
+	for name, _ := range systems {
+		if (name == "Apple II") || (name == "Exidy Sorcerer") {
+			// Drop this data
+		} else if name == "Science of Cambridge MK14" {
+			result["MK14"] = systems[name]
+		} else {
+			result[name] = systems[name]
+		}
+	}
+	return result
 }
 
 // Given an advertInfo, this function produces an int that represents that year and quarter.
