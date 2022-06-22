@@ -13,14 +13,15 @@ import (
 
 // These constants represent the offset of the items in each advert read from the CSV file
 const ( // iota is reset to 0
-	adv_magazine = 0 //
-	adv_yyyy_mm  = 1 //
-	adv_page_num = 2 //
-	adv_system   = 3 //
-	adv_price    = 4 //
-	adv_blank_1  = 5 //
-	adv_kit      = 6 //
-	adv_board    = 7 //
+	adv_magazine      = 0 //
+	adv_yyyy_mm       = 1 //
+	adv_page_num      = 2 //
+	adv_system        = 3 //
+	adv_price_ex_vat  = 4 //
+	adv_price_inc_vat = 5 //
+	adv_blank_1       = 6 //
+	adv_kit           = 7 //
+	adv_board         = 8 //
 )
 
 const max_price = 100_000 // Maximum price allowed: anything higher than this is likely to be an error in the data
@@ -150,10 +151,10 @@ func parseData(data [][]string) (adverts []advertInfo, minDate int, maxDate int)
 
 		// The price must be in pounds, must be an integer and must be less than £100,000
 		// The CSV will be encoded as UTF-8 and the "£" symbol will have to be checked as UTF-8
-		price, err := handle_price(row[adv_price])
+		price, err := handle_price(row[adv_price_inc_vat])
 		if err != nil {
 			valid = false
-			fmt.Printf("Line %d: Bad price [%s] (%s) in [%v]\n", csvRowIndex, row[adv_price], err, row)
+			fmt.Printf("Line %d: Bad price [%s] (%s) in [%v]\n", csvRowIndex, row[adv_price_inc_vat], err, row)
 		}
 
 		// TODO
