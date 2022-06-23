@@ -129,6 +129,9 @@ func parseData(data [][]string) (adverts []advertInfo, minDate int, maxDate int)
 
 		// Make sure the system name has no leading or trailing spaces
 		system := strings.TrimSpace(row[adv_system])
+		if strings.Contains(system, " ??") {
+			continue
+		}
 
 		// Entirely empty lines must be ignored. As an approximation, ignore any line without a system title, as that cannot contain meaningful data.
 		if len(system) == 0 {
