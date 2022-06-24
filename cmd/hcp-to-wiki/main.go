@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -45,6 +46,7 @@ type advertInfo struct {
 	page     int    // page number
 	system   string // Computer system name
 	price    int    // Price in pounds, including VAT
+	variant  string // System variant
 	kit      string // TODO: True if the system had to be assembled
 	board    string // TODO: True if the system was a system board
 }
@@ -169,11 +171,38 @@ func parseData(data [][]string) (adverts []advertInfo, minDate int, maxDate int)
 		// TODO
 		//  The kit field must be Y, N, ? or blank
 
+		// Temporary code to validate "Variant"
+		// If "Variant" is not blank it should appear at the end of "system" IFF "system" ends with a "K"
+		// Compare using upper case for consistency
+		variant := strings.ToUpper(strings.TrimSpace(row[adv_variant]))
+		system_uc := strings.ToUpper(system)
+		if variant != "" {
+			if !strings.HasSuffix(system_uc, variant) {
+				if system_uc[len(system_uc)-1:] == "K" {
+					fmt.Printf("Line %d: BAD variant [%s] in [%s]\n", csvRowIndex, variant, system)
+				} else {
+					// TODO: temporarily suppress some known good values to make anomalies stand out
+					if (system == "ELF II" && variant == "256") ||
+						(system == "DAI Personal Computer" && variant == "48K") ||
+						(system == "AIM 65" && variant == "1K") ||
+						(system == "RML 380Z" && variant == "16K") {
+
+					} else {
+						fmt.Printf("Line %d: Dropped variant [%s] in [%s]\n", csvRowIndex, variant, system)
+					}
+				}
+		}
+		// Additionally, if the system name ends "<whitespace><digit(s)>K" and "Variant" is blank, flag it for attention.
+		match, _ := regexp.MatchString("\\s+\\d+K$", system_uc)
+		if match && (variant == "") {
+			fmt.Printf("Line %d: Candidate variant in [%s]\n", csvRowIndex, system)
+		}
+
 		if !valid {
 			continue
 		}
 
-		advert := advertInfo{csvRowIndex, row[adv_magazine], year, month, page, system, price, row[adv_kit], row[adv_board]}
+		advert := advertInfo{csvRowIndex, row[adv_magazine], year, month, page, system, price, variant, row[adv_kit], row[adv_board]}
 		adverts = append(adverts, advert)
 		dateIndex := buildIndexFromAdvertInfo(advert)
 		if dateIndex < minDate {
