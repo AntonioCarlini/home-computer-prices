@@ -191,6 +191,7 @@ func parseData(data [][]string) (adverts []advertInfo, minDate int, maxDate int)
 						fmt.Printf("Line %d: Dropped variant [%s] in [%s]\n", csvRowIndex, variant, system)
 					}
 				}
+			}
 		}
 		// Additionally, if the system name ends "<whitespace><digit(s)>K" and "Variant" is blank, flag it for attention.
 		match, _ := regexp.MatchString("\\s+\\d+K$", system_uc)
@@ -303,12 +304,13 @@ func handle_yyyy_mm(yyyy_mm string) (year int, month int, err error) {
 }
 
 // Process a page number of the form "pNNNN".
-// return an error if:
+// return an error if the page number appears to be invalid
 // Otherwise return the page number as an integer.
 //
 // TODO: allow for roman numberals: e.g. pii
 
 func handle_page_number(page_num_text string) (page int, err error) {
+	page_num_text = strings.TrimSpace(page_num_text) // Trim leading and trailing spaces: strconv.Atoi() doesn't like it!
 	page = -1000
 	var local_err error
 
