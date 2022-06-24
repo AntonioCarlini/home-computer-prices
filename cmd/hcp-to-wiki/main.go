@@ -1,5 +1,11 @@
 package main
 
+// Takes a CSV file representing home computer prices taken from adverts and
+// processes that data to produce output in a format suitable for inclusion in a wiki.
+//
+// The data is grouped by quarter in half decades in each table.
+// Systems are listd alphabetically; only systems with at least one valid data point in that table are included.
+
 import (
 	"encoding/csv"
 	"flag"
@@ -13,15 +19,17 @@ import (
 
 // These constants represent the offset of the items in each advert read from the CSV file
 const ( // iota is reset to 0
-	adv_magazine      = 0 //
-	adv_yyyy_mm       = 1 //
-	adv_page_num      = 2 //
-	adv_system        = 3 //
-	adv_price_ex_vat  = 4 //
-	adv_price_inc_vat = 5 //
-	adv_blank_1       = 6 //
-	adv_kit           = 7 //
-	adv_board         = 8 //
+	adv_magazine      = 0  //
+	adv_yyyy_mm       = 1  //
+	adv_page_num      = 2  //
+	adv_system        = 3  //
+	adv_price_ex_vat  = 4  //
+	adv_price_inc_vat = 5  //
+	adv_blank_1       = 6  //
+	adv_variant       = 7  //
+	adv_skip          = 8  //
+	adv_kit           = 9  //
+	adv_board         = 10 //
 )
 
 const max_price = 100_000 // Maximum price allowed: anything higher than this is likely to be an error in the data
@@ -40,12 +48,6 @@ type advertInfo struct {
 	kit      string // TODO: True if the system had to be assembled
 	board    string // TODO: True if the system was a system board
 }
-
-// Takes a CSV file representing home computer prices taken from adverts and
-// processes that data to produce output in a format suitable for inclusion in a wiki.
-//
-// The data is grouped by quarter in half decades in each table.
-// Systems are listd alphabetically; only systems with at least one valid data point in that table are included.
 
 func main() {
 
@@ -129,7 +131,11 @@ func parseData(data [][]string) (adverts []advertInfo, minDate int, maxDate int)
 
 		// Make sure the system name has no leading or trailing spaces
 		system := strings.TrimSpace(row[adv_system])
-		if strings.Contains(system, " ??") {
+
+		// Decide if this entry should be dropped
+		skip := strings.ToUpper(strings.TrimSpace(row[adv_skip]))
+		if strings.Contains(skip, "Y") {
+			fmt.Printf("Line %d: Skipping: %s\n", csvRowIndex, system)
 			continue
 		}
 
