@@ -31,6 +31,7 @@ const ( // iota is reset to 0
 	adv_skip          = 8  //
 	adv_kit           = 9  //
 	adv_board         = 10 //
+	adv_system_copy   = 13 // temp
 )
 
 const max_price = 100_000 // Maximum price allowed: anything higher than this is likely to be an error in the data
@@ -82,6 +83,7 @@ func main() {
 	for _, key := range keys {
 		fmt.Printf("%-40.40s: %v\n", key, systems[key])
 	}
+	fmt.Println()
 
 	// Output the final wiki format data
 	outputWikidata(systems, keys, minDate, maxDate)
@@ -173,12 +175,14 @@ func parseData(data [][]string) (adverts []advertInfo, minDate int, maxDate int)
 
 		// Temporary code to validate "Variant"
 		// If "Variant" is not blank it should appear at the end of "system" IFF "system" ends with a "K"
+		// Unfortunately "Sharp MZ-80K" ends with a "K" so go for the slightly more complicated "ends with <space>digitsK"
 		// Compare using upper case for consistency
 		variant := strings.ToUpper(strings.TrimSpace(row[adv_variant]))
 		system_uc := strings.ToUpper(system)
 		if variant != "" {
 			if !strings.HasSuffix(system_uc, variant) {
-				if system_uc[len(system_uc)-1:] == "K" {
+				match, _ := regexp.MatchString("\\s+\\d+K$", system_uc)
+				if match && system_uc[len(system_uc)-1:] == "K" {
 					fmt.Printf("Line %d: BAD variant [%s] in [%s]\n", csvRowIndex, variant, system)
 				} else {
 					// TODO: temporarily suppress some known good values to make anomalies stand out
@@ -188,7 +192,7 @@ func parseData(data [][]string) (adverts []advertInfo, minDate int, maxDate int)
 						(system == "RML 380Z" && variant == "16K") {
 
 					} else {
-						fmt.Printf("Line %d: Dropped variant [%s] in [%s]\n", csvRowIndex, variant, system)
+						// fmt.Printf("Line %d: Dropped variant [%s] in [%s]\n", csvRowIndex, variant, system)
 					}
 				}
 			}
@@ -197,6 +201,22 @@ func parseData(data [][]string) (adverts []advertInfo, minDate int, maxDate int)
 		match, _ := regexp.MatchString("\\s+\\d+K$", system_uc)
 		if match && (variant == "") {
 			fmt.Printf("Line %d: Candidate variant in [%s]\n", csvRowIndex, system)
+		}
+
+		// Temporary code to validate that "system" plus "variant" is now identical to "system_copy"
+		if variant != "" {
+			if system+" "+variant != row[adv_system_copy] {
+				// Only warn for systems known to be "different"
+				if (system == "ELF II" && variant == "256") ||
+					(system == "DAI Personal Computer" && variant == "48K") ||
+					(system == "AIM 65" && variant == "1K") ||
+					(system == "RML 380Z" && variant == "16K") {
+				} else {
+					fmt.Printf("Line %d: system copy differs with system & variant: [%s] [%s] [%s]\n", csvRowIndex, system, row[adv_system_copy], variant)
+				}
+			}
+		} else if system != row[adv_system_copy] {
+			fmt.Printf("Line %d: system copy differs with empty variant: [%s] != [%s]\n", csvRowIndex, system, row[adv_system_copy])
 		}
 
 		if !valid {
@@ -407,7 +427,7 @@ func buildByDate(adverts []advertInfo) map[int]map[string]advertInfo {
 // o Data for "Apple II" is suppressed, as the configuration is unclear
 // o Data for "Exidy Sorcerer" is suppressed as the configuration is unclear
 func preprocessSystemData(systems map[string][]int) map[string][]int {
-	systemsToSuppress := []string{"Apple II", "Commodore PET", "Exidy Sorcerer", "Tandy TRS-80 Model 1"}
+	systemsToSuppress := []string{"xApple II", "xCommodore PET", "xExidy Sorcerer", "xTandy TRS-80 Model 1"}
 	result := make(map[string][]int, 0)
 	for name, _ := range systems {
 		if sliceContainsString(systemsToSuppress, name) {
