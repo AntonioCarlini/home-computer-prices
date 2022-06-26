@@ -464,20 +464,26 @@ func decodeIndexByQuarter(index int) (year int, quarter int) {
 
 // Given a number of advertInfo objects, build a map of system => price-array
 // The price array index should be 0 for minDate and increase up to (maxDate-minDate) for maxDate
+//
+// Rather than just using the system name when building prices, build a "full system name" from the system name and the varint string.
+// This better fits the new spreadhseet format where something like the Atari 400, which cmae in 16K, 32K and 48K versions, can now be listed as "Atari 400" with three variations.
+
 func buildBySystem(adverts []advertInfo, minDate int, maxDate int) map[string][]int {
 	result := make(map[string][]int, 0)
+	fullSystemNameMap := buildFullSystemNameMap(adverts)
 
 	for _, advert := range adverts {
-		if _, ok := result[advert.system]; !ok {
+		fullSystemName := buildAdvertSystemName(advert, fullSystemNameMap)
+		if _, ok := result[fullSystemName]; !ok {
 			// This system has been seen for the first time.
 			// Create its price array
-			result[advert.system] = make([]int, maxDate-minDate+1)
+			result[fullSystemName] = make([]int, maxDate-minDate+1)
 		}
 		// By this point the price array must exist, so update if appropriate.
 		index := buildIndexFromAdvertInfo(advert)
-		storedPrice := result[advert.system][index-minDate]
+		storedPrice := result[fullSystemName][index-minDate]
 		if (advert.price < storedPrice) || (storedPrice <= 0) {
-			result[advert.system][index-minDate] = advert.price
+			result[fullSystemName][index-minDate] = advert.price
 		}
 	}
 	return result
@@ -499,6 +505,57 @@ func systemHasPriceData(startYear int, endYear int, minDate int, maxDate int, pr
 		}
 	}
 	return systemHasPriceData
+}
+
+// Given an array of avertInfo this function builds a map of system name to an array of variant strings for that system.
+// Note that if an advertInfo has an empty variant, that is included.
+func buildFullSystemNameMap(adverts []advertInfo) map[string][]string {
+	result := make(map[string][]string, 0)
+	for _, advert := range adverts {
+		if _, ok := result[advert.system]; !ok {
+			// This system has been seen for the first time.
+			// Create its variant array
+			result[advert.system] = make([]string, 0)
+		}
+		fullSystemName := buildFullSystemName(advert)
+		if !sliceContainsString(result[advert.system], fullSystemName) {
+			result[advert.system] = append(result[advert.system], fullSystemName)
+		}
+	}
+	return result
+}
+
+// Given an advert object, this function returns the "full system name".
+//
+// The "full system name" is defined as follows:
+// If the variant field is blank (leading and trailing spaces have already bee suppressed), then just use the system name.
+// Otherwise use the system name follwoed by a space and the variant in brackets.
+func buildFullSystemName(advert advertInfo) string {
+	if advert.variant == "" {
+		return advert.system
+	} else {
+		return advert.system + " (" + advert.variant + ")"
+	}
+}
+
+// Return the name by which this system variant should be known.
+//
+// If the system is not registered or is registered with no entries, return an error string.
+// If either of these happens, it must be a program logic error rather than a data error.
+// Otherwise if there is only one entry, then there is no need to use the variant as a disambiguator, so use the system name alone.
+// Finally, if more than one variant exists, then build a full system name that depends on the variant.
+func buildAdvertSystemName(advert advertInfo, fullSystemNameMap map[string][]string) string {
+	if entry, ok := fullSystemNameMap[advert.system]; ok {
+		if len(entry) == 0 {
+			return "BAD**BAD"
+		} else if len(entry) == 1 {
+			return advert.system
+		} else {
+			return buildFullSystemName(advert)
+		}
+	} else {
+		return "FAILED**FAILED"
+	}
 }
 
 // golang doesn't have min/max so provide them here
