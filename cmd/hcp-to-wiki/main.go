@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -173,51 +172,7 @@ func parseData(data [][]string) (adverts []advertInfo, minDate int, maxDate int)
 		// TODO
 		//  The kit field must be Y, N, ? or blank
 
-		// Temporary code to validate "Variant"
-		// If "Variant" is not blank it should appear at the end of "system" IFF "system" ends with a "K"
-		// Unfortunately "Sharp MZ-80K" ends with a "K" so go for the slightly more complicated "ends with <space>digitsK"
-		// Compare using upper case for consistency
 		variant := strings.ToUpper(strings.TrimSpace(row[adv_variant]))
-		system_uc := strings.ToUpper(system)
-		if variant != "" {
-			if !strings.HasSuffix(system_uc, variant) {
-				match, _ := regexp.MatchString("\\s+\\d+K$", system_uc)
-				if match && system_uc[len(system_uc)-1:] == "K" {
-					fmt.Printf("Line %d: BAD variant [%s] in [%s]\n", csvRowIndex, variant, system)
-				} else {
-					// TODO: temporarily suppress some known good values to make anomalies stand out
-					if (system == "ELF II" && variant == "256") ||
-						(system == "DAI Personal Computer" && variant == "48K") ||
-						(system == "AIM 65" && variant == "1K") ||
-						(system == "RML 380Z" && variant == "16K") {
-
-					} else {
-						// fmt.Printf("Line %d: Dropped variant [%s] in [%s]\n", csvRowIndex, variant, system)
-					}
-				}
-			}
-		}
-		// Additionally, if the system name ends "<whitespace><digit(s)>K" and "Variant" is blank, flag it for attention.
-		match, _ := regexp.MatchString("\\s+\\d+K$", system_uc)
-		if match && (variant == "") {
-			fmt.Printf("Line %d: Candidate variant in [%s]\n", csvRowIndex, system)
-		}
-
-		// Temporary code to validate that "system" plus "variant" is now identical to "system_copy"
-		if variant != "" {
-			if system+" "+variant != row[adv_system_copy] {
-				// Only warn for systems known to be "different"
-				if (system == "ELF II" && variant == "256") ||
-					(system == "DAI Personal Computer" && variant == "48K") ||
-					(system == "AIM 65" && variant == "1K") ||
-					(system == "RML 380Z" && variant == "16K") {
-				} else {
-					fmt.Printf("Line %d: system copy differs with system & variant: [%s] [%s] [%s]\n", csvRowIndex, system, row[adv_system_copy], variant)
-				}
-			}
-		} else if system != row[adv_system_copy] {
-			fmt.Printf("Line %d: system copy differs with empty variant: [%s] != [%s]\n", csvRowIndex, system, row[adv_system_copy])
-		}
 
 		if !valid {
 			continue
