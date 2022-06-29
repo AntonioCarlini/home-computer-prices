@@ -204,11 +204,11 @@ func outputWikidata(systems map[string][]int, keys []string, minDate int, maxDat
 	const groupYearsBy = 5
 	for groupYear := startYear; groupYear <= maxYear; groupYear = groupYear + groupYearsBy {
 		fmt.Printf("== %d - %d ==\n\n", groupYear, groupYear+groupYearsBy-1)
-		fmt.Printf("{| class=\"wikitable\"\n")
+		fmt.Println("{| class=\"wikitable\"  style=\"width: 95%;\"")
 		fmt.Printf("|-\n")
 		fmt.Printf("!  || colspan=\"4\" | %d || colspan=\"4\" | %d || colspan=\"4\" | %d || colspan=\"4\" | %d || colspan=\"4\" | %d\n", groupYear, groupYear+1, groupYear+2, groupYear+3, groupYear+4)
 		fmt.Printf("|-\n")
-		fmt.Println(" ! style=\"width: 10%;\" | System ")
+		fmt.Println(" ! style=\"width: 12%;\" | System ")
 		fmt.Printf(" ! JAN-MAR || APR-JUN || JUL-SEP || OCT-DEC || JAN-MAR || APR-JUN || JUL-SEP || OCT-DEC || JAN-MAR || APR-JUN || JUL-SEP || OCT-DEC || JAN-MAR || APR-JUN || JUL-SEP || OCT-DEC || JAN-MAR || APR-JUN || JUL-SEP || OCT-DEC\n")
 		for _, key := range keys {
 			// Pick up the prices for this system:
