@@ -57,7 +57,7 @@ func main() {
 
 	inputs := flag.Args()
 	if len(inputs) != 1 {
-		log.Fatalf("Exactly 1 arguments required but %d supplied\n", len(inputs))
+		log.Fatalf("Exactly 1 argument required but %d supplied\n", len(inputs))
 	}
 
 	entryFilename := flag.Arg(0)
@@ -113,7 +113,7 @@ func readCSV(filename string) [][]string {
 // Perform some integrity checks on the data.
 // Build up an array of advertInfo containing the data that passes validation.
 //
-// Return the data and also the minimum and maximum date-indices seen when processing the data.
+// Return an array of advertInfo structs and also the minimum and maximum date-indices seen when processing the data.
 func parseData(data [][]string) (adverts []advertInfo, minDate int, maxDate int) {
 	minDate = (max_year + 1) * 4
 	maxDate = -1
@@ -431,6 +431,9 @@ func buildBySystem(adverts []advertInfo, minDate int, maxDate int) map[string][]
 	result := make(map[string][]int, 0)
 	fullSystemNameMap := buildFullSystemNameMap(adverts)
 
+	// Check fpr common data entry errors
+	validateSystemNameMap(fullSystemNameMap)
+
 	for _, advert := range adverts {
 		fullSystemName := buildAdvertSystemName(advert, fullSystemNameMap)
 		if _, ok := result[fullSystemName]; !ok {
@@ -487,8 +490,8 @@ func buildFullSystemNameMap(adverts []advertInfo) map[string][]string {
 // Given an advert object, this function returns the "full system name".
 //
 // The "full system name" is defined as follows:
-// If the variant field is blank (leading and trailing spaces have already bee suppressed), then just use the system name.
-// Otherwise use the system name follwoed by a space and the variant in brackets.
+// If the variant field is blank (leading and trailing spaces have already been suppressed), then just use the system name.
+// Otherwise use the system name followed by a space and the variant in brackets.
 func buildFullSystemName(advert advertInfo) string {
 	if advert.variant == "" {
 		return advert.system
@@ -515,6 +518,27 @@ func buildAdvertSystemName(advert advertInfo, fullSystemNameMap map[string][]str
 	} else {
 		return "FAILED**FAILED"
 	}
+}
+
+// A common error is for a variant to be ommitted by accident.
+// Normally you would expect either all systems to have an identical variant (e.g. "Gemini Galaxy 2" which always has a variant of "64K")
+// or for there to be multiple variants (e.g. "ZX Spectrum which ").
+// In the former case, because only one variant exists, the system is listed as "Gemini Galaxy 2".
+// In the latter case, two systems are listed "ZX Spectrum (16K)" "ZX Spectrum (48K)".
+// If by accident a Galaxy entry omits the variant, there will now be a new entry for "Gemini Galaxy 2" which will cause a "Galaxy Gemini 2 (64K)" entry to erroneously appear.
+//
+// To guard against this, scan the systems map and look for variant arrays of len > 1 where one entry is empty (i.e. "").
+func validateSystemNameMap(fullSystemNameMap map[string][]string) {
+	for name, _ := range fullSystemNameMap {
+		variants := fullSystemNameMap[name]
+		// Complain if there is more than one variant and any of the variants exactly matches the name (i.e. the key)
+		if len(variants) > 1 {
+			if sliceContainsString(variants, name) {
+				fmt.Printf("Suspect entry: %s   %s\n", name, variants)
+			}
+		}
+	}
+
 }
 
 // golang doesn't have min/max so provide them here
