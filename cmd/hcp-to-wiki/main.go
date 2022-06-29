@@ -319,6 +319,10 @@ func handle_price(price_text string) (price int, err error) {
 
 	// The price must be in pounds, must be an integer and must be less than £100,000
 	// The CSV will be encoded as UTF-8 and the "£" symbol will have to be checked as UTF-8
+	price_text = strings.TrimSpace(price_text)
+	if len(price_text) == 0 {
+		return 0, fmt.Errorf("Missing Price")
+	}
 	price_currency := []rune(price_text)[0]
 	price_value := string([]rune(price_text)[1:])          // Remove first character, allowing for possibility that it is UTF-8
 	price_value = strings.SplitN(price_value, ".", 2)[0]   // Remove everything after a decimal point
