@@ -543,7 +543,7 @@ func buildAdvertSystemName(advert advertInfo, fullSystemNameMap map[string][]str
 
 // A common error is for a variant to be ommitted by accident.
 // Normally you would expect either all systems to have an identical variant (e.g. "Gemini Galaxy 2" which always has a variant of "64K")
-// or for there to be multiple variants (e.g. "ZX Spectrum which ").
+// or for there to be multiple variants (e.g. "ZX Spectrum" which has "16K" and "48K").
 // In the former case, because only one variant exists, the system is listed as "Gemini Galaxy 2".
 // In the latter case, two systems are listed "ZX Spectrum (16K)" "ZX Spectrum (48K)".
 // If by accident a Galaxy entry omits the variant, there will now be a new entry for "Gemini Galaxy 2" which will cause a "Galaxy Gemini 2 (64K)" entry to erroneously appear.
