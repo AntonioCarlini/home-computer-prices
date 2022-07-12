@@ -67,8 +67,11 @@ func main() {
 	// Massage the original CSV data into an array of advertInfo data
 	adverts, minDate, maxDate := parseData(data)
 
+	// Build a map of adverts that have no variant
+	blankVariantSystems := buildBlankVariantMap(adverts)
+
 	// Build a collection of prices for each system
-	systems := buildBySystem(adverts, minDate, maxDate)
+	systems := buildBySystem(adverts, blankVariantSystems, minDate, maxDate)
 
 	systems = preprocessSystemData(systems)
 
@@ -427,12 +430,12 @@ func decodeIndexByQuarter(index int) (year int, quarter int) {
 // Rather than just using the system name when building prices, build a "full system name" from the system name and the varint string.
 // This better fits the new spreadhseet format where something like the Atari 400, which cmae in 16K, 32K and 48K versions, can now be listed as "Atari 400" with three variations.
 
-func buildBySystem(adverts []advertInfo, minDate int, maxDate int) map[string][]int {
+func buildBySystem(adverts []advertInfo, blankVariantSystems map[string][]advertInfo, minDate int, maxDate int) map[string][]int {
 	result := make(map[string][]int, 0)
 	fullSystemNameMap := buildFullSystemNameMap(adverts)
 
 	// Check fpr common data entry errors
-	validateSystemNameMap(fullSystemNameMap)
+	validateSystemNameMap(fullSystemNameMap, blankVariantSystems)
 
 	for _, advert := range adverts {
 		fullSystemName := buildAdvertSystemName(advert, fullSystemNameMap)
@@ -487,6 +490,24 @@ func buildFullSystemNameMap(adverts []advertInfo) map[string][]string {
 	return result
 }
 
+// Given an array of advertInfo, build a map of system => array of advertInfo that have no variant.
+// This will be used when listing "suspicious" entries to list the lines in the original CSV
+// where those entries originated.
+func buildBlankVariantMap(adverts []advertInfo) map[string][]advertInfo {
+	result := make(map[string][]advertInfo, 0)
+	for _, advert := range adverts {
+		if _, ok := result[advert.system]; !ok {
+			// This system has been seen for the first time.
+			// Create its variant array
+			result[advert.system] = make([]advertInfo, 0)
+		}
+		if advert.variant == "" {
+			result[advert.system] = append(result[advert.system], advert)
+		}
+	}
+	return result
+}
+
 // Given an advert object, this function returns the "full system name".
 //
 // The "full system name" is defined as follows:
@@ -528,13 +549,17 @@ func buildAdvertSystemName(advert advertInfo, fullSystemNameMap map[string][]str
 // If by accident a Galaxy entry omits the variant, there will now be a new entry for "Gemini Galaxy 2" which will cause a "Galaxy Gemini 2 (64K)" entry to erroneously appear.
 //
 // To guard against this, scan the systems map and look for variant arrays of len > 1 where one entry is empty (i.e. "").
-func validateSystemNameMap(fullSystemNameMap map[string][]string) {
+func validateSystemNameMap(fullSystemNameMap map[string][]string, blankVariantSystems map[string][]advertInfo) {
 	for name, _ := range fullSystemNameMap {
 		variants := fullSystemNameMap[name]
 		// Complain if there is more than one variant and any of the variants exactly matches the name (i.e. the key)
 		if len(variants) > 1 {
 			if sliceContainsString(variants, name) {
-				fmt.Printf("Suspect entry: %s   %s\n", name, variants)
+				refs := "REFS: "
+				for _, advert := range blankVariantSystems[name] {
+					refs = refs + strconv.Itoa(advert.row) + " "
+				}
+				fmt.Printf("Suspect entry: %s   %s : %s\n", name, variants, refs)
 			}
 		}
 	}
