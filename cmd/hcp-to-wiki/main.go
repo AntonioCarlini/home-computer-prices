@@ -6,6 +6,14 @@ package main
 // The data is grouped by quarter in half decades in each table.
 // Systems are listd alphabetically; only systems with at least one valid data point in that table are included.
 
+// TODO:
+//   handle "*" in the expected way
+//   add option to suppress entries with fewer than N quarters of data
+//   --low-frequency-limit N  TODO: better name needed
+//
+//   add option to display entries with few data points in a separate set of tables
+//   --generate-low-frequency-tables   TODO: better name needed
+
 import (
 	"encoding/csv"
 	"flag"
@@ -434,7 +442,7 @@ func buildBySystem(adverts []advertInfo, blankVariantSystems map[string][]advert
 	result := make(map[string][]int, 0)
 	fullSystemNameMap := buildFullSystemNameMap(adverts)
 
-	// Check fpr common data entry errors
+	// Check for common data entry errors
 	validateSystemNameMap(fullSystemNameMap, blankVariantSystems)
 
 	for _, advert := range adverts {
@@ -451,6 +459,12 @@ func buildBySystem(adverts []advertInfo, blankVariantSystems map[string][]advert
 			result[fullSystemName][index-minDate] = advert.price
 		}
 	}
+
+	// TODO
+	// work through systems and look for cases where there are exactly two variants, one of which is *
+	// In those cases, collapse * data into other variants data, choosing the lowest price in each case.
+	// Issue a message?
+
 	return result
 }
 
