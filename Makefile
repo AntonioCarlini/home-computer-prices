@@ -17,7 +17,7 @@ $(BIN_DIR):
 
 # Export the ODS spreadsheet to CSV.
 $(CSV): $(ODS) | $(BIN_DIR)
-	$(SOFFICE) --headless --convert-to csv --outdir $(BIN_DIR) $(ODS)
+	$(SOFFICE) --headless --convert-to 'csv:Text - txt - csv (StarCalc):44,34,76,1,,0,false,true,true' --outdir $(BIN_DIR) $(ODS)
 
 csv: $(CSV)
 
