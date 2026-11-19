@@ -91,9 +91,8 @@ func main() {
 	sort.Strings(keys)
 
 	for _, key := range keys {
-		fmt.Printf("%-40.40s: %v\n", key, systems[key])
+		fmt.Fprintf(os.Stderr, "%-40.40s: %v\n", key, systems[key])
 	}
-	fmt.Println()
 
 	// Output the final wiki format data
 	outputWikidata(systems, keys, minDate, maxDate)
@@ -149,7 +148,7 @@ func parseData(data [][]string) (adverts []advertInfo, minDate int, maxDate int)
 		// Decide if this entry should be dropped
 		skip := strings.ToUpper(strings.TrimSpace(row[adv_skip]))
 		if strings.Contains(skip, "Y") {
-			fmt.Printf("Line %d: Skipping: %s\n", csvRowIndex, system)
+			fmt.Fprintf(os.Stderr, "Line %d: Skipping: %s\n", csvRowIndex, system)
 			continue
 		}
 
@@ -162,14 +161,14 @@ func parseData(data [][]string) (adverts []advertInfo, minDate int, maxDate int)
 		year, month, err := handle_yyyy_mm(row[adv_yyyy_mm])
 		if err != nil {
 			valid = false
-			fmt.Printf("Line %d: Bad YYYY-DD [%s] (%s) in [%v]\n", csvRowIndex, row[adv_yyyy_mm], err, row)
+			fmt.Fprintf(os.Stderr, "Line %d: Bad YYYY-DD [%s] (%s) in [%v]\n", csvRowIndex, row[adv_yyyy_mm], err, row)
 		}
 
 		// The page format must be pN{1,5}}, so at least one N but no more than 5.
 		// Note that the page number does not influence the final output, so "valid" is not adjusted and the data may be used
 		page, err := handle_page_number(row[adv_page_num])
 		if err != nil {
-			fmt.Printf("Line %d: Bad page number [%s] (%s) in [%v]\n", csvRowIndex, row[adv_page_num], err, row)
+			fmt.Fprintf(os.Stderr, "Line %d: Bad page number [%s] (%s) in [%v]\n", csvRowIndex, row[adv_page_num], err, row)
 		}
 
 		// The price must be in pounds, must be an integer and must be less than £100,000
@@ -177,7 +176,7 @@ func parseData(data [][]string) (adverts []advertInfo, minDate int, maxDate int)
 		price, err := handle_price(row[adv_price_inc_vat])
 		if err != nil {
 			valid = false
-			fmt.Printf("Line %d: Bad price [%s] (%s) in [%v]\n", csvRowIndex, row[adv_price_inc_vat], err, row)
+			fmt.Fprintf(os.Stderr, "Line %d: Bad price [%s] (%s) in [%v]\n", csvRowIndex, row[adv_price_inc_vat], err, row)
 		}
 
 		// TODO
@@ -365,16 +364,16 @@ func buildByDate(adverts []advertInfo) map[int]map[string]advertInfo {
 	for _, advert := range adverts {
 		// fmt.Printf("Processing row %d: %v\n", advert.row, advert)
 		index := buildIndexFromAdvertInfo(advert)
-		fmt.Printf("Built index %d for %v\n", index, advert)
+		fmt.Fprintf(os.Stderr, "Built index %d for %v\n", index, advert)
 		if systemMap, ok := byDate[index]; ok {
 			if storedAdvert, ok := systemMap[advert.system]; ok {
 				// fmt.Printf("systemMap entry exists: %v\n", systemMap[advert.system])
 				stored_price := storedAdvert.price
 				if (advert.price > 0) && (advert.price < stored_price) {
-					fmt.Printf("%d/%d %s found as cheaper (%d against %d); row %d replaces row %d\n", advert.year, advert.month, advert.system, advert.price, stored_price, advert.row, storedAdvert.row)
+					fmt.Fprintf(os.Stderr, "%d/%d %s found as cheaper (%d against %d); row %d replaces row %d\n", advert.year, advert.month, advert.system, advert.price, stored_price, advert.row, storedAdvert.row)
 					systemMap[advert.system] = advert
 				} else {
-					fmt.Printf("%d/%d %s found as pricier (%d against %d); row %d LEAVES   row %d\n", advert.year, advert.month, advert.system, advert.price, stored_price, advert.row, storedAdvert.row)
+					fmt.Fprintf(os.Stderr, "%d/%d %s found as pricier (%d against %d); row %d LEAVES   row %d\n", advert.year, advert.month, advert.system, advert.price, stored_price, advert.row, storedAdvert.row)
 				}
 			} else {
 				// fmt.Printf("systemMap entry missing\n")
@@ -384,7 +383,7 @@ func buildByDate(adverts []advertInfo) map[int]map[string]advertInfo {
 			byDate[index] = make(map[string]advertInfo, 0)
 			systemMap = byDate[index]
 			systemMap[advert.system] = advert
-			fmt.Printf("%d/%d %s found for first time at %d; row %d\n", advert.year, advert.month, advert.system, advert.price, advert.row)
+			fmt.Fprintf(os.Stderr, "%d/%d %s found for first time at %d; row %d\n", advert.year, advert.month, advert.system, advert.price, advert.row)
 		}
 	}
 	return byDate
@@ -402,7 +401,7 @@ func preprocessSystemData(systems map[string][]int) map[string][]int {
 	for name, _ := range systems {
 		if sliceContainsString(systemsToSuppress, name) {
 			// Drop this data
-			fmt.Printf("Dropping %s\n", name)
+			fmt.Fprintf(os.Stderr, "Dropping %s\n", name)
 		} else if name == "Science of Cambridge MK14" {
 			result["MK14"] = systems[name]
 		} else {
@@ -573,7 +572,7 @@ func validateSystemNameMap(fullSystemNameMap map[string][]string, blankVariantSy
 				for _, advert := range blankVariantSystems[name] {
 					refs = refs + strconv.Itoa(advert.row) + " "
 				}
-				fmt.Printf("Suspect entry: %s   %s : %s\n", name, variants, refs)
+				fmt.Fprintf(os.Stderr, "Suspect entry: %s   %s : %s\n", name, variants, refs)
 			}
 		}
 	}
