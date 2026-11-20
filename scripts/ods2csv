@@ -1,0 +1,11 @@
+#!/bin/sh
+tmp=$(mktemp /tmp/git-ods-XXXXXX.csv)
+if ssconvert "$1" "$tmp" >/dev/null 2>&1; then
+    cat "$tmp"
+    rm -f "$tmp"
+    exit 0
+else
+    echo "ERROR: ssconvert failed on $1" >&2
+    rm -f "$tmp"
+    exit 1
+fi
