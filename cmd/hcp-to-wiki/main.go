@@ -212,6 +212,7 @@ func outputWikidata(systems map[string][]int, keys []string, minDate int, maxDat
 	maxYear, _ := decodeIndexByQuarter(maxDate)
 	startYear := (minYear / 5) * 5
 	const groupYearsBy = 5
+        fmt.Printf("__TOC__\n\n") // Add the TOC
 	for groupYear := startYear; groupYear <= maxYear; groupYear = groupYear + groupYearsBy {
 		fmt.Printf("== %d - %d ==\n\n", groupYear, groupYear+groupYearsBy-1)
 		fmt.Println("{| class=\"wikitable\"  style=\"width: 95%;\"")
@@ -250,6 +251,8 @@ func outputWikidata(systems map[string][]int, keys []string, minDate int, maxDat
 		}
 		fmt.Printf("|}\n\n") // Close the "wikitable"
 	}
+        fmt.Printf("[[Category:Classic Computing]]\n\n") // Add the category
+
 }
 
 // Process a date of the form "YYYY-MM".
