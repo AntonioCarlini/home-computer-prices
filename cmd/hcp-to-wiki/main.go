@@ -382,6 +382,10 @@ func handle_price(price_text string) (price int, err error) {
 		possible_price, err := strconv.Atoi(price_value)
 		if err != nil {
 			local_err = fmt.Errorf("bad Price Data [%s]", price_value)
+		} else if possible_price < 0 {
+			local_err = fmt.Errorf("negative Price Data [%s]", price_text)
+		} else if possible_price == 0 {
+			local_err = fmt.Errorf("zero Price Data [%s]", price_text)
 		} else if possible_price > max_price {
 			local_err = fmt.Errorf("unlikely Price Data [%s] (greater than %d)", price_text, max_price)
 		} else {

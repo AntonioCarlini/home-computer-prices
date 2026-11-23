@@ -232,3 +232,60 @@ func TestOutputWikidataEmpty(t *testing.T) {
 		t.Error("empty output should not contain a dated table")
 	}
 }
+
+func TestHandlePriceZero(t *testing.T) {
+	price, err := handle_price("£0")
+
+	if err == nil {
+		t.Fatal("expected error for zero price")
+	}
+
+	if !strings.Contains(err.Error(), "zero Price") {
+		t.Errorf("unexpected error: %v", err)
+	}
+
+	if price != -1 {
+		t.Errorf("expected price -1, got %d", price)
+	}
+}
+
+func TestHandlePriceNegative(t *testing.T) {
+	price, err := handle_price("£-10")
+
+	if err == nil {
+		t.Fatal("expected error for negative price")
+	}
+
+	if !strings.Contains(err.Error(), "negative Price") {
+		t.Errorf("unexpected error: %v", err)
+	}
+
+	if price != -1 {
+		t.Errorf("expected price -1, got %d", price)
+	}
+}
+
+func TestHandlePriceValid(t *testing.T) {
+	tests := []struct {
+		input string
+		want  int
+	}{
+		{"£100", 100},
+		{"£1,234", 1234},
+		{"£99,999", 99999},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			price, err := handle_price(tt.input)
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if price != tt.want {
+				t.Errorf("expected %d, got %d", tt.want, price)
+			}
+		})
+	}
+}
