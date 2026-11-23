@@ -216,6 +216,19 @@ func parseData(data [][]string) (adverts []advertInfo, minDate int, maxDate int)
 
 // Given advert data for a range of systems, outputs that data in a form suitable for including in a wiki page
 func outputWikidata(systems map[string][]int, keys []string, minDate int, maxDate int) {
+
+	// If there is no valid price data, produce an empty wiki table.
+	if minDate > maxDate {
+		fmt.Printf("__TOC__\n\n")
+		fmt.Println("{| class=\"wikitable\" style=\"width: 95%;\"")
+		fmt.Println("|-")
+		fmt.Println("! System")
+		fmt.Println("|}")
+		fmt.Println()
+		fmt.Println("[[Category:Classic Computing]]")
+		return
+	}
+
 	// Loop through quarters in groups of five years.
 	// Take the lowest year and make the starting point either YYY0 or YYY5
 	// Process data for that group

@@ -1,6 +1,11 @@
 package main
 
-import "testing"
+import (
+	"io"
+	"os"
+	"strings"
+	"testing"
+)
 
 func TestHandleYYYYMMInvalidLength(t *testing.T) {
 	tests := []struct {
@@ -167,5 +172,63 @@ func TestParseDataEmptyRow(t *testing.T) {
 
 	if len(adverts) != 0 {
 		t.Errorf("expected no adverts, got %d", len(adverts))
+	}
+}
+
+func captureStdout(t *testing.T, fn func()) string {
+	t.Helper()
+
+	oldStdout := os.Stdout
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	os.Stdout = writer
+	fn()
+
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	os.Stdout = oldStdout
+
+	output, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := reader.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	return string(output)
+}
+
+func TestOutputWikidataEmpty(t *testing.T) {
+	output := captureStdout(t, func() {
+		outputWikidata(
+			make(map[string][]int),
+			[]string{},
+			(max_year+1)*4,
+			-1,
+		)
+	})
+
+	expected := []string{
+		"__TOC__",
+		`{| class="wikitable" style="width: 95%;"`,
+		"! System",
+		"|}",
+		"[[Category:Classic Computing]]",
+	}
+
+	for _, text := range expected {
+		if !strings.Contains(output, text) {
+			t.Errorf("output missing %q", text)
+		}
+	}
+
+	if strings.Contains(output, "== 2100 -") {
+		t.Error("empty output should not contain a dated table")
 	}
 }
