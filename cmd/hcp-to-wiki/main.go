@@ -132,6 +132,11 @@ func parseData(data [][]string) (adverts []advertInfo, minDate int, maxDate int)
 	searching_for_header := true
 	for i, row := range data {
 		csvRowIndex := i + 1
+
+                // Ignore empty rows.
+		if len(row) == 0 {
+			continue
+		}
 		valid := true
 
 		// Skip all data until a row with a suitable header line is seen
@@ -139,6 +144,13 @@ func parseData(data [][]string) (adverts []advertInfo, minDate int, maxDate int)
 			if row[adv_magazine] == "Source" {
 				searching_for_header = false
 			}
+			continue
+		}
+
+		// Check that the row contains all required fields.
+		if len(row) <= adv_board {
+			fmt.Fprintf(os.Stderr, "Line %d: Incomplete CSV row: expected at least %d fields, got %d: [%v]\n",
+				csvRowIndex, adv_board+1, len(row), row)
 			continue
 		}
 

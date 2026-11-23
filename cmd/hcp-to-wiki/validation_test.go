@@ -115,3 +115,57 @@ func TestHandleYYYYMMValid(t *testing.T) {
 		})
 	}
 }
+
+func TestParseDataMalformedRow(t *testing.T) {
+	header := []string{"Source"}
+
+	// This row is deliberately incomplete.
+	malformed := []string{
+		"Magazine",
+		"1980-01",
+		"p1",
+		"Test Computer",
+	}
+
+	// Construct a complete row using the existing field definitions.
+	valid := make([]string, adv_board+1)
+	valid[adv_magazine] = "Magazine"
+	valid[adv_yyyy_mm] = "1980-01"
+	valid[adv_page_num] = "p1"
+	valid[adv_system] = "Test Computer"
+	valid[adv_price_inc_vat] = "£100"
+
+	data := [][]string{
+		header,
+		malformed,
+		valid,
+	}
+
+	adverts, _, _ := parseData(data)
+
+	if len(adverts) != 1 {
+		t.Fatalf("expected 1 advert, got %d", len(adverts))
+	}
+
+	if adverts[0].system != "Test Computer" {
+		t.Errorf("unexpected system name: %s", adverts[0].system)
+	}
+
+	if adverts[0].price != 100 {
+		t.Errorf("expected price 100, got %d", adverts[0].price)
+	}
+}
+
+func TestParseDataEmptyRow(t *testing.T) {
+	data := [][]string{
+		{},
+		{"Source"},
+		{},
+	}
+
+	adverts, _, _ := parseData(data)
+
+	if len(adverts) != 0 {
+		t.Errorf("expected no adverts, got %d", len(adverts))
+	}
+}
