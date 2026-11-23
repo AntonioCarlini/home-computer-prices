@@ -86,3 +86,85 @@ func TestParseDataValidRows(t *testing.T) {
 		t.Errorf("expected maxDate %d, got %d", wantMaxDate, maxDate)
 	}
 }
+
+func makeTestAdvertRow() []string {
+	row := make([]string, adv_board+1)
+	row[adv_magazine] = "Test Magazine"
+	row[adv_yyyy_mm] = "1980-01"
+	row[adv_page_num] = "p10"
+	row[adv_system] = "Test Computer"
+	row[adv_price_inc_vat] = "£100"
+	row[adv_kit] = "N"
+	row[adv_board] = "N"
+	return row
+}
+
+func TestParseDataFilteringAndValidation(t *testing.T) {
+	tests := []struct {
+		name      string
+		date      string
+		page      string
+		system    string
+		price     string
+		skip      string
+		wantCount int
+	}{
+		{
+			name:      "skip marked row",
+			skip:      "Y",
+			wantCount: 0,
+		},
+		{
+			name:      "empty system name",
+			system:    " ",
+			wantCount: 0,
+		},
+		{
+			name:      "invalid date",
+			date:      "1980-13",
+			wantCount: 0,
+		},
+		{
+			name:      "invalid price",
+			price:     "not a price",
+			wantCount: 0,
+		},
+		{
+			name:      "invalid page number",
+			page:      "pxyz",
+			wantCount: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			row := makeTestAdvertRow()
+
+			if tt.date != "" {
+				row[adv_yyyy_mm] = tt.date
+			}
+			if tt.page != "" {
+				row[adv_page_num] = tt.page
+			}
+			if tt.system != "" {
+				row[adv_system] = tt.system
+			}
+			if tt.price != "" {
+				row[adv_price_inc_vat] = tt.price
+			}
+			row[adv_skip] = tt.skip
+
+			data := [][]string{
+				{"Source"},
+				row,
+			}
+
+			adverts, _, _ := parseData(data)
+
+			if len(adverts) != tt.wantCount {
+				t.Errorf("expected %d adverts, got %d",
+					tt.wantCount, len(adverts))
+			}
+		})
+	}
+}
