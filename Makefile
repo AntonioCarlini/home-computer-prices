@@ -8,7 +8,7 @@ CSV := $(BIN_DIR)/Home-Computer-Price-Data.csv
 PROGRAM := $(BIN_DIR)/hcp-to-wiki
 WIKI := $(BIN_DIR)/home-computer-prices.wiki
 
-.PHONY: all csv wiki clean
+.PHONY: all csv wiki test clean
 
 all: wiki
 
@@ -24,6 +24,10 @@ csv: $(CSV)
 # Build the Go executable.
 $(PROGRAM): go.mod cmd/hcp-to-wiki/main.go | $(BIN_DIR)
 	$(GO) build -o $@ ./cmd/hcp-to-wiki
+
+# Run Go tests.
+test:
+	$(GO) test ./...
 
 # Generate MediaWiki markup.
 $(WIKI): $(CSV) $(PROGRAM)
