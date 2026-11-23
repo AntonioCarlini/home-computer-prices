@@ -266,29 +266,40 @@ func outputWikidata(systems map[string][]int, keys []string, minDate int, maxDat
 func handle_yyyy_mm(yyyy_mm string) (year int, month int, err error) {
 	year = -1
 	month = -1
-	var local_err error
 
-	date_sep := yyyy_mm[4:5]
-	if date_sep != "-" {
-		local_err = fmt.Errorf("bad YYYY-MM separator [%s] from [%s]", date_sep, yyyy_mm)
-	} else if len(yyyy_mm) != 7 {
-		local_err = fmt.Errorf("bad YYYY-MM: length invalid: [%s]", yyyy_mm)
+	// Check the length before attempting to access individual characters.
+	if len(yyyy_mm) != 7 {
+		return year, month, fmt.Errorf("bad YYYY-MM: length invalid: [%s]", yyyy_mm)
 	}
+
+	// Check the separator.
+	if yyyy_mm[4] != '-' {
+		return year, month, fmt.Errorf("bad YYYY-MM separator [%c] from [%s]", yyyy_mm[4], yyyy_mm)
+	}
+
+	// Extract and validate the year.
 	year_text := yyyy_mm[0:4]
 	year, err = strconv.Atoi(year_text)
 	if err != nil {
-		local_err = fmt.Errorf("bad Year digits [%s] (%w)", year_text, err)
-	} else if (year < min_year) || (year > max_year) {
-		local_err = fmt.Errorf("bad Year  [%d] outside range %d-%d", year, min_year, max_year)
+		return -1, -1, fmt.Errorf("bad Year digits [%s] (%w)", year_text, err)
 	}
-	month_text := yyyy_mm[5:]
+
+	if (year < min_year) || (year > max_year) {
+		return -1, -1, fmt.Errorf("bad Year [%d] outside range %d-%d", year, min_year, max_year)
+	}
+
+	// Extract and validate the month.
+	month_text := yyyy_mm[5:7]
 	month, err = strconv.Atoi(month_text)
 	if err != nil {
-		local_err = fmt.Errorf("bad Month digits [%s]", month_text)
-	} else if (month < 1) || (month > 12) {
-		local_err = fmt.Errorf("bad Month [%d]", month)
+		return -1, -1, fmt.Errorf("bad Month digits [%s]", month_text)
 	}
-	return year, month, local_err
+
+	if (month < 1) || (month > 12) {
+		return -1, -1, fmt.Errorf("bad Month [%d]", month)
+	}
+
+	return year, month, nil
 }
 
 // Process a page number of the form "pNNNN".
