@@ -29,6 +29,9 @@ $(PROGRAM): go.mod cmd/hcp-to-wiki/main.go | $(BIN_DIR)
 test:
 	$(GO) test ./...
 
+testv:
+	$(GO) test -v ./...
+
 # Generate MediaWiki markup.
 $(WIKI): $(CSV) $(PROGRAM)
 	$(PROGRAM) $(CSV) > $@
