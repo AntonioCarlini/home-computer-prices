@@ -8,7 +8,7 @@ CSV := $(BIN_DIR)/Home-Computer-Price-Data.csv
 PROGRAM := $(BIN_DIR)/hcp-to-wiki
 WIKI := $(BIN_DIR)/home-computer-prices.wiki
 
-.PHONY: all csv wiki test clean
+.PHONY: all csv wiki test testv clean
 
 all: wiki
 
